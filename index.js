@@ -9,13 +9,11 @@ const bot = new BootBot({
   appSecret: config.get('APP_SECRET')
 });
 
-bot.on('message', (payload, chat) => {
-	const text = payload.message.text;
-	console.log(`The user said: ${text}`);
-});
+
 
 bot.hear(['hello', 'hi'], (payload, chat) => {
 	console.log('The user said "hello" or "hi"!');
+	chat.say('Hi ');
 });
 
 bot.start(port);
