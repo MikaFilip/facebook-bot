@@ -9,6 +9,7 @@ const stemmer = nlp.PorterStemmer;
 const wordnet = new nlp.WordNet();
 var Lemmer = require('lemmer');
 const WeatherApi = "http://api.openweathermap.org/data/2.5/weather?appid=febe9884711fbda5d8830f609b2edbbb&units=metric";
+const ForecastApi = "http://api.openweathermap.org/data/2.5/forecast?appid=febe9884711fbda5d8830f609b2edbbb&units=metric";
 
 
 var port = process.env.PORT || config.get('PORT');
@@ -138,19 +139,47 @@ async function doAskForForecast(conv){
 	
 	let chat = conv.get("_chat");
 	let payload = conv.get("_payload");
-	await conv.ask(`Would you like know forecast for  tomerrow?`, (payload, convo) => {
+	let result = await conv.ask(`Would you like know forecast for  tomerrow?`, (payload, convo) => {
 			const text = payload.message.text;
 			convo.set("answer", text);
 			convo.set('state', 2);
 			console.log("answer is : " + text);
 			if (text === 'yes') {
-				console.log("yes for forecvast");
-				convo.say("OK, find forecast");
+				doFetchForecast(conv);
 			} else if (text === 'no') {
-
+				doFinishConversation(conv);
             }
 			//convo.say(`Oh, your name is ${text}`).then(() => askSelfish(convo));
 		});
+	console.log("==>  await finished");
+}
+
+async function doFetchForecast(conv){
+	let chat = conv.get("_chat");
+	let payload = conv.get("_payload");
+	let rsponse = 
+		await fetch(ForecastApi + "&q=" + conv.get("placeName")).then(res => res.json()).then(json => {
+			if (json["cod"] == 200) {
+				if (json.hasOwnProperty('main')) {
+					if (json['main'].hasOwnProperty('temp')) {
+						chat.say("The tempeatrure is " + json['main']['temp']);
+					}
+				} else {
+					
+				}
+			} else {  
+				chat.say("I'm sorry I naven't read data.")
+			}
+			console.log("Search result is " + JSON.stringify(json));
+			conv.set("state", 1);
+		});
+}
+
+async function doFinishConversation(conv){
+	let chat = conv.get("_chat");
+	let payload = conv.get("_payload");
+	chat.say("By have you nice time in "+conv.get("placeName"));
+	conv.end();
 }
 
 
