@@ -25,7 +25,16 @@ const bot = new BootBot({
 
 bot.hear(['hello', 'hi'], (payload, chat) => {
 	console.log('The user said "hello" or "hi"!');
-	chat.say('Hi _ 002');
+	chat.say("Hello, I'm a weather chat bot. Tell me the place for which you are interested in the weather.");
+	chat.conversation((conversation => {
+		conversation.set("today", Date.now());
+		conversation.set("placeName", placeName);
+		conversation.set("_chat", chat);
+		conversation.set("_payload", payload);
+		conversation.set("_data", data);
+		
+		doAskPlace(conversation);
+	}));
 });
 
 
@@ -36,49 +45,7 @@ bot.hear(/weather (.*)/i, (payload, chat, data) => {
 	console.log(data);
 	const placeName = data.match[1];
 	
-	console.log(placeName);
-
-	const askName = (convo) => {
-		convo.ask(`Would you like know forecast for  tomerrow?`, (payload, convo) => {
-			const text = payload.message.text;
-			convo.set("answer", text);
-			convo.set('state', 2);
-			console.log("answer is : " + text);
-			if (text === 'yes') {
-				console.log("yes for forecvast");
-				convo.say("OK, find forecast");
-			} else if (text === 'no') {
-
-            }
-			//convo.say(`Oh, your name is ${text}`).then(() => askSelfish(convo));
-		});
-	};
-
-
-	const askSelfish = (convo) => {
-		convo.ask(`Do you like me?`, (payload, convo) => {
-			const text = payload.message.text;
-			convo.set("answer", text);
-			convo.set('state', 2);
-			console.log("answer is : " + text);
-			if (text === 'yes') {
-				console.log("yes for forecvast");
-				convo.say("OK, find forecast")
-			} else if (text === 'no') {
-
-			}
-			convo.say(`Oh, your name is ${text}`).then(() => askFavoriteFood(convo));
-		});
-	};
-	/*
-		conversation.ask(`What's your name?`, (payload, conversation) => {
-			const text = payload.message.text;
-			conversation.set('name', text);
-			conversation.say(`Oh, your name is ${text}`).then(() => askFavoriteFood(conversation));
-			conversation.end();
-		});
-
-	*/
+	
 	
 
 	chat.conversation((conversation => {
@@ -87,31 +54,27 @@ bot.hear(/weather (.*)/i, (payload, chat, data) => {
 		conversation.set("_chat", chat);
 		conversation.set("_payload", payload);
 		conversation.set("_data", data);
-		/*
-		await fetch(WeatherApi + "&q=" + placeName).then(res => res.json()).then(json => {
-			if (json["cod"] == 200) {
-				if (json.hasOwnProperty('main')) {
-					if (json['main'].hasOwnProperty('temp')) {
-						chat.say("The tempeatrure is " + json['main']['temp']);
-                    }
-				} else {
-					
-                }
-			} else {  
-				chat.say("I'm sorry I naven't read data.")
-            }
-			console.log("Search result is " + JSON.stringify(json));
-			convo.set("placeName", placeName);
-			convo.set("state", 1);
-		})
-		conversation.say("He here");
-		askName(conversation);
-		console.log("conversation ended");
-		*/
+		
 		doFirst(conversation);
 	}))
 })
 
+async function doAskPlace(conv){
+	let chat = conv.get("_chat");
+	let payload = conv.get("_payload");
+	let result = await conv.ask(`Which weather on the place are you interested in?`, (payload, convo) => {
+			const text = payload.message.text;
+			convo.set('state', 2);
+			console.log("namePlace is : " + text);
+			if (text.length > 0) {
+				convo.set("namePlace", text);
+			} else{
+				doFinishConversation(conv);
+            }
+			//convo.say(`Oh, your name is ${text}`).then(() => askSelfish(convo));
+		});
+	console.log("==>  await finished");
+}
 
 async function doFirst(conv) {
 	let chat = conv.get("_chat");
