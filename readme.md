@@ -1,9 +1,10 @@
-# Vyrob si vlastního chatbota
+# chatboot
 
-V posledních letech zažívají obrovský boom uživatelská rozhraní založená na přirozené konverzaci. Můžeš se svého telefonu zeptat na zítřejší počasí, rezervovat si na facebooku lístky do kina apod. Přijď si vytvořit vlastního chatbota a zjistit, jak se takováto rozhraní vyrábí.
-Úvod
+Jednoduchy chatbot pro predived pocasi
 
-### Co se na tomto workshopu naučíte a co si vyzkoušíte:
+### Diagram
+
+![alt text](https://github.com/MikaFilip/facebook-bot/blob/master/blob/flow_diagram.png)
 
 * Zjistíte, jak fungují automatické roboty pro chat
 * Zjistíte, jak ze svého počítače udělat server pro chatbota
