@@ -357,7 +357,4 @@ const convertForecast = (json) =>{
 }
 
 
-
-
-
 bot.start(port);
