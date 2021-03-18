@@ -138,7 +138,7 @@ async function addAll(conv) {
 	  conv.set("placeName", answer);
 	  conv.set("weather", weather);
 	  if(answer === 'finish'){
-		  finish(conv);
+		  endConv(conv);
 		  end;
 		  break;
 	  }
@@ -155,7 +155,7 @@ async function addAll(conv) {
   
   finish = await ask(conv, "Would you like finish our conversation?");
   if(finish === "yes"){
-	  finish(conv);
+	  endConv(conv);
   }
   else{
 	eraseConv();
@@ -238,7 +238,7 @@ async function ask(conv, question){
 }
 
 
-const finish = (conv) => {
+const endConv = (conv) => {
 	let chat = conv.get("_chat");
 	let payload = conv.get("_payload");
 	chat.say("By have you nice time in "+conv.get("placeName"));
@@ -249,6 +249,7 @@ const finish = (conv) => {
 const sayForecast = (convo) => {
 	let chat = convo.get("_chat");
 	let payload = convo.get("_payload");
+	say(convo, "Say forecast for day " + convo.get("days"));
 	if(typeof convo.get("forecast") === "undefined" || convo.get("forecast") == null){
 		//error
 		console.log("     -- error forecast is not known");
@@ -257,6 +258,7 @@ const sayForecast = (convo) => {
 		if(typeof days === "undefined" || days == null){
 			days = "1";
 		}
+		days = days.toString();
 		let fcst = convo.get("forecast")["forecast"];
 		if(fcst.hasOwnProperty(days)){
 			console.log(JSON.stringify(fcst[days]));
@@ -266,9 +268,9 @@ const sayForecast = (convo) => {
 			return false;
 		} else {
 			
-			chat.say("The wether on "+fcst[days]["date"].toISOString() + " will be max temperature = " 
+			chat.say("The wether on "+fcst[days]["date"] + " will be max temperature = " 
 				+  fcst[days]["max"] + " and mini temperature = " + fcst[days]["min"] );
-			convo.set("days", days + 1);
+			
 		}
 		
 	}
@@ -291,30 +293,39 @@ const sayWeather = (conv) =>{
 
 const convertDate = (value) =>{
 	let d = new Date(value);
+	console.log("date begin = "+d+" param = "+value);
 	d.setHours(0);
 	d.setMinutes(0);
 	d.setSeconds(0);
 	d.setMilliseconds(0);
+	console.log("data on end = "+d);
 	return d;
 }
 
+const dateToIso = (value) => {
+	let reg = /(\d\d\d\d-\d\d-\d\d)(.*)/;
+	let arr = reg.exec(value.toISOString());
+	return arr[1];
+}
+
 const countDaysBetweenDates = (startDate, endDate) => {
-  const start = new Date(startDate) //clone
-  const end = new Date(endDate) //clone
+  const start = new Date(dateToIso(startDate)); //clone
+  const end = new Date(dateToIso(endDate)); //clone
   let dayCount = 0
 
   while (end > start) {
     dayCount++
     start.setDate(start.getDate() + 1)
   }
-
   return dayCount
 }
 
 
 
 const convertForecast = (json) =>{
+	console.log("new date = "+ (new Date()));
 	let now = convertDate(new Date());
+	console.log("  => now is : "+now);
 	let obj = {};
 	obj['today'] = now;
 	obj['forecast'] = {};
@@ -336,19 +347,21 @@ const convertForecast = (json) =>{
 				
 			}
 			days = countDaysBetweenDates(now, date);
-			if(!obj['forecast'].hasOwnProperty(days)){
-				obj['forecast'][days] = {};
-				obj['forecast'][days]['date'] = date;
-				obj['forecast'][days]['days'] = days;
-				obj['forecast'][days]['min'] = min;
-				obj['forecast'][days]['max'] = max;
-			}
-			else{
-				if(obj['forecast'][days]['min'] > min){
+			if(days > 0){
+				if(!obj['forecast'].hasOwnProperty(days)){
+					obj['forecast'][days] = {};
+					obj['forecast'][days]['date'] = dateToIso(date);
+					obj['forecast'][days]['days'] = days;
 					obj['forecast'][days]['min'] = min;
-				}
-				if(obj['forecast'][days]['max'] < max){
 					obj['forecast'][days]['max'] = max;
+				}
+				else{
+					if(obj['forecast'][days]['min'] > min){
+						obj['forecast'][days]['min'] = min;
+					}
+					if(obj['forecast'][days]['max'] < max){
+						obj['forecast'][days]['max'] = max;
+					}
 				}
 			}
 		}

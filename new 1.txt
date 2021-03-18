@@ -1,0 +1,130 @@
+GNU Octave, version 6.2.0
+Copyright (C) 2021 The Octave Project Developers.
+This is free software; see the source code for copying conditions.
+There is ABSOLUTELY NO WARRANTY; not even for MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  For details, type 'warranty'.
+
+Octave was configured for "x86_64-w64-mingw32".
+
+Additional information about Octave is available at https://www.octave.org.
+
+Please contribute if you find this software useful.
+For more information, visit https://www.octave.org/get-involved.html
+
+Read https://www.octave.org/bugs.html to learn how to submit bug reports.
+For information about changes from previous versions, type 'news'.
+
+>> A = [0.75 0 0 0.25 ; 0.25 0.25 0.25 0 ; 0 0.25 0.75 0; 0 0.5 0 0.75]
+A =
+
+   0.7500        0        0   0.2500
+   0.2500   0.2500   0.2500        0
+        0   0.2500   0.7500        0
+        0   0.5000        0   0.7500
+
+>> x = [ 0.25 ; 0.25 ; 0.25 ; 0.25]
+x =
+
+   0.2500
+   0.2500
+   0.2500
+   0.2500
+
+
+
+>> for i = 1:10
+x = A*x
+endfor
+x =
+
+   0.2500
+   0.1875
+   0.2500
+   0.3125
+
+x =
+
+   0.2656
+   0.1719
+   0.2344
+   0.3281
+
+x =
+
+   0.2812
+   0.1680
+   0.2188
+   0.3320
+
+x =
+
+   0.2939
+   0.1670
+   0.2061
+   0.3330
+
+x =
+
+   0.3037
+   0.1667
+   0.1963
+   0.3333
+
+x =
+
+   0.3111
+   0.1667
+   0.1889
+   0.3333
+
+x =
+
+   0.3167
+   0.1667
+   0.1833
+   0.3333
+
+x =
+
+   0.3208
+   0.1667
+   0.1792
+   0.3333
+
+x =
+
+   0.3239
+   0.1667
+   0.1761
+   0.3333
+
+x =
+
+   0.3263
+   0.1667
+   0.1737
+   0.3333
+
+# vynasobime poctem obyvatel
+
+>> xr = 10000000 * x
+xr =
+
+   3.2629e+06
+   1.6667e+06
+   1.7371e+06
+   3.3333e+06
+   
+  
+>>  for i = 1:100000
+x = A * x
+endfor
+
+# po 100000 iteraci
+
+x =
+
+   0.3333
+   0.1667
+   0.1667
+   0.3333
