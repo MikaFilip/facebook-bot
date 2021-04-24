@@ -1,7 +1,8 @@
+'use strict';
 const BootBot = require('bootbot');
 const config = require('config');
 const fetch = require('node-fetch');
-
+const echoModule = require('./modules/echo');
 
 const WeatherApi = "http://api.openweathermap.org/data/2.5/weather?appid=febe9884711fbda5d8830f609b2edbbb&units=metric";
 const ForecastApi = "http://api.openweathermap.org/data/2.5/forecast?appid=febe9884711fbda5d8830f609b2edbbb&units=metric";
@@ -9,317 +10,368 @@ const ForecastApi = "http://api.openweathermap.org/data/2.5/forecast?appid=febe9
 
 var port = process.env.PORT || config.get('PORT');
 
+var userId;
+
+
 const bot = new BootBot({
   accessToken: config.get('ACCESS_TOKEN'),
   verifyToken: config.get('VERIFY_TOKEN'),
   appSecret: config.get('APP_SECRET')
 });
 
+bot.setGreetingText("Hey there! I am weather chat bot");
+
+bot.module(echoModule);
+
+const askPlace = (convo) => {
+	
+}
 
 
-bot.hear(['hello', 'hi'], (payload, chat) => {
-	console.log('The user said "hello" or "hi"!');
-	//chat.say("Hello, I'm a weather chat bot. Tell me the place for which you are interested in the weather.");
-	chat.conversation((conversation => {
-		conversation.set("today", Date.now());
-		conversation.set("_chat", chat);
-		conversation.set("_payload", payload);
+
+const askWeather = async (convo) => {
+  convo.ask(`Where are you interested in the weather?`, (payload, convo, data) => {
+    const place = payload.message.text;
+	convo.set("place", place);
+    fetch(WeatherApi+"&q="+place).then(res => res.json()).then(json => {
+		//get weather
+		console.log("Weather = "+JSON.stringify(json));
+		convo.set("weather", json);
+		if (json.hasOwnProperty('cod')) {
+			let cod = json['cod'];
+			if (cod == 200) {
+				
+				convo.ask((convo) => {
+					const buttons = [
+						{ type: 'postback', title: 'Show forecast', payload: 'SHOW_FORECAST' },
+						//{ type: 'postback', title: 'Compare with.', payload: 'ENTER_AGAIN' },
+						{ type: 'postback', title: 'Compare with.', payload: 'ENTER_COMPARE' },
+						{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+					];
+					convo.sendButtonTemplate(getWeather(convo) + "\n\nWhat do you want to do?", buttons);
+				}, (payload, convo, data) => {},
+					[
+					{
+					  event: 'postback:SHOW_FORECAST',
+					  callback: (payload, convo) => {
+						convo.say('We are showing you forecast.').then(() => showForecast(convo));
+					  }
+					},
+					{
+					  event: 'postback:ENTER_AGAIN',
+					  callback: (payload, convo) => {
+						convo.say('We are chenging place.').then(() => askWeather(convo));
+					  }
+					},
+					{
+						event: 'postback:ENTER_COMPARE',
+						callback: (payload, convo) => {
+						  convo.say('We are comapring').then(() => askCompare(convo));
+						}
+					  },
+					{
+					  event: 'postback:END_CONVERSATION',
+					  callback: (payload, convo) => {
+						convo.say('Our conversation is finished, bye').then(() => convo.end());
+					  }
+					}
+					]
+				);
+				
+			}
+			else{
+				//unknown place
+				let chat = convo.get("_chat");
+				let payload = convo.get("_payload");
+				convo.ask((convo) => {
+					const buttons = [
+						{ type: 'postback', title: 'Enter place again', payload: 'ENTER_AGAIN' },
+						{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+					];
+					convo.sendButtonTemplate("Sorry, I don't know \""+convo.get("place")+"\"\nWhat do you want to do?", buttons);
+				}, (payload, convo, data) => {
+					const text = payload.message.text;
+					convo.set('gender', text);
+					convo.say(`Great, you are a ${text}`).then(() => askAge(convo));
+				}, [
+					{
+					  event: 'postback:ENTER_AGAIN',
+					  callback: (payload, convo) => {
+						convo.say('You clicked on a button').then(() => askWeather(convo));
+					  }
+					},
+					{
+					  event: 'postback:END_CONVERSATION',
+					  callback: (payload, convo) => {
+						convo.say('Our conversation is finished, bye').then(() => convo.end());
+					  }
+					}
+				  ]);
+			}
+		} else {
+			chat.say("Sorry, I have received wrong data.");
+		}
 		
-		doInvite(conversation);
-	}));
-	console.log("finished");
-});
-
-
-
-
-
-bot.hear(/weather (.*)/i, (payload, chat, data) => {
-	console.log(data);
-	const placeName = data.match[1];
-	
-	
-	
-
-	chat.conversation((conversation => {
-		conversation.set("today", Date.now());
-		conversation.set("placeName", placeName);
-		conversation.set("_chat", chat);
-		conversation.set("_payload", payload);
-		conversation.set("_data", data);
+	});/*.catch( error => {
+		let chat = convo.get("_chat");
+		chat.say("Sorry, I don't know \""+convo.get("place")+"\"");
 		
-		doFirst(conversation);
-	}))
-})
+	});*/
+  });
+};
 
+const showForecast = async (convo) =>{
+	console.log("hre will be forecat code day = "+convo.get("day"))
+	if (convo.get("forecast") === undefined){
+		let json = await getJson(ForecastApi + "&q=" + convo.get("place"));
+		console.log("json = "+JSON.stringify(json));
+		if(json.cod == 200){
+			convo.set("forecast", convertForecast(json));
+			convo.set("day", "1");
+		}
+	}
+	let fcst = convo.get("forecast")["forecast"];
+	let day = convo.get("day").toString();
+	if(typeof day === "undefined" || day == null){
+		day = "1";
+	}
+	
+	let nextDay = (parseInt(day)+1).toString();
+	let prevDay = (parseInt(day)-1).toString();
+	console.log(JSON.stringify(fcst));
+	console.log("next day = ",nextDay);
+	console.log("prev day = ",prevDay);
+	if(fcst.hasOwnProperty(day)){
+		console.log(JSON.stringify(fcst[day]));
+		let buttons;
+		if(fcst.hasOwnProperty(prevDay) && fcst.hasOwnProperty(nextDay)){
+			buttons = [
+				{ type: 'postback', title: 'Prev day', payload: 'SHOW_FORECAST_FOR_PREV_DAY' },
+				{ type: 'postback', title: 'Next day', payload: 'SHOW_FORECAST_FOR_NEXT_DAY' },
+				{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' }
+			];
+		} else if(fcst.hasOwnProperty(prevDay)){
+			buttons = [
+				{ type: 'postback', title: 'Prev day', payload: 'SHOW_FORECAST_FOR_PREV_DAY' },
+				{ type: 'postback', title: 'Change place.', payload: 'ENTER_AGAIN' },
+				{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+			];
+		} else if(fcst.hasOwnProperty(nextDay)){
+			buttons = [
+				{ type: 'postback', title: 'Next day', payload: 'SHOW_FORECAST_FOR_NEXT_DAY' },
+				{ type: 'postback', title: 'Change place.', payload: 'ENTER_AGAIN' },
+				{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+			];
 
+		} else {
+			buttons = [
+				{ type: 'postback', title: 'Change place.', payload: 'ENTER_AGAIN' },
+				{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+			];
+		}
+		convo.say("The wether int \""+convo.get("place")+"\" on "+fcst[day]["date"] + " will be max temperature = " 
+				+  fcst[day]["max"] + " and mini temperature = " + fcst[day]["min"] ).then(() => {
+					convo.ask((convo) => {
+						convo.sendButtonTemplate(getWeather(convo) + "\n\nWhat do you want to do?", buttons);
+					}, (payload, convo, data) => {},
+						[
+						{
+						  event: 'postback:SHOW_FORECAST_FOR_NEXT_DAY',
+						  callback: (payload, convo) => {
+							convo.set("day", nextDay);
+							convo.say('We are showing you forecast.').then(() => {
+								console.log("st day on " + convo.get("day"))
+								showForecast(convo)
+							});
+						  }
+						},{
+							event: 'postback:SHOW_FORECAST_FOR_PREV_DAY',
+							callback: (payload, convo) => {
+							  convo.set("day", prevDay);
+							  convo.say('We are showing you forecast.').then(() => {
+								  console.log("st day on " + convo.get("day"))
+								  showForecast(convo)
+							  });
+							}
+						  },
+						{
+						  event: 'postback:ENTER_AGAIN',
+						  callback: (payload, convo) => {
+							convo.say('We are chenging place.').then(() => askWeather(convo));
+						  }
+						},
+						{
+						  event: 'postback:END_CONVERSATION',
+						  callback: (payload, convo) => {
+							convo.say('Our conversation is finished, bye').then(() => convo.end());
+						  }
+						}
+						]
+					);
+				});
+	}
+	
+};
 
-
-
-
-
-bot.hear('ask me', (payload, chat) => {
-
-	const askName = (convo) => {
-		console.log("  > => askName");
-		convo.ask(`What's your name?`, (payload, convo) => {
-			const text = payload.message.text;
-			let result = null;
-			(async function () {
-				// wait to http request to finish
-				let data  = await  getJson(WeatherApi + "&q=Prague");
-				console.log("Json = "+JSON.stringify(data));
-				// below code will be executed after http request is finished
-				// some code
-			})();
-			console.log("result = "+ JSON.stringify(result));
-			convo.set('name', text);
-			convo.say(`Oh, your name is ${text}`).then(() => askFavoriteFood(convo));
+const askCompare = async (convo) => {
+	console.log("We will ask for compare")
+	convo.ask("Which place would you want to comare with \""+convo.get("place")+"\"?", (payload, convo, data) => {
+		const compare = payload.message.text;
+		convo.set("compare", compare);
+		fetch(WeatherApi+"&q="+compare).then(res => res.json()).then(json => {
+			if (json.hasOwnProperty('cod')) {
+				let cod = json['cod'];
+				if (cod == 200) {
+					let weather = convo.get("weather");
+					let message = '';
+					if (json.hasOwnProperty('main') && weather.hasOwnProperty('main')) {
+						if (json['main'].hasOwnProperty('temp') && weather['main'].hasOwnProperty('temp')) {
+							let tmp1 = json['main']['temp'];
+							let tmp2 = weather['main']['temp'];
+							if(tmp1 > tmp2){
+								message = "In \""+compare+"\" is better temerature as \""+convo.get("place")+"\". \n"+ tmp1 + " > "+tmp2;
+							}
+							else if(tmp1 < tmp2){
+								message = "In \""+convo.get("place")+" is better temerature as \""+compare+"\". \n"+ tmp2 + " > "+tmp1;
+							}
+							else{
+								message = "Weather is same on both places \""+convo.get("place")+"\" and \""+compare+"\". \n"+ tmp2 + " = "+tmp1;
+							}
+						}
+					}
+					convo.ask((convo) => {
+						const buttons = [
+							{ type: 'postback', title: 'Show forecast', payload: 'SHOW_FORECAST' },
+							//{ type: 'postback', title: 'Compare with.', payload: 'ENTER_AGAIN' },
+							{ type: 'postback', title: 'Compare with.', payload: 'ENTER_COMPARE' },
+							{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+						];
+						convo.sendButtonTemplate(message + "\n\nWhat do you want to do?", buttons);
+					}, (payload, convo, data) => {},
+						[
+						{
+						  event: 'postback:SHOW_FORECAST',
+						  callback: (payload, convo) => {
+							convo.say('We are showing you forecast.').then(() => showForecast(convo));
+						  }
+						},
+						{
+						  event: 'postback:ENTER_AGAIN',
+						  callback: (payload, convo) => {
+							convo.say('We are chenging place.').then(() => askWeather(convo));
+						  }
+						},
+						{
+							event: 'postback:ENTER_COMPARE',
+							callback: (payload, convo) => {
+							  convo.say('We are chenging place.').then(() => ackCompare(convo));
+							}
+						  },
+						{
+						  event: 'postback:END_CONVERSATION',
+						  callback: (payload, convo) => {
+							convo.say('Our conversation is finished, bye').then(() => convo.end());
+						  }
+						}
+						]
+					);
+					
+				}
+				else{
+					//unknown place
+					let chat = convo.get("_chat");
+					let payload = convo.get("_payload");
+					convo.ask((convo) => {
+						const buttons = [
+							{ type: 'postback', title: 'Enter place again', payload: 'ENTER_AGAIN' },
+							{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
+						];
+						convo.sendButtonTemplate("Sorry, I don't know \""+convo.get("place")+"\"\nWhat do you want to do?", buttons);
+					}, (payload, convo, data) => {
+						const text = payload.message.text;
+						convo.set('gender', text);
+						convo.say(`Great, you are a ${text}`).then(() => askAge(convo));
+					}, [
+						{
+						  event: 'postback:ENTER_AGAIN',
+						  callback: (payload, convo) => {
+							convo.say('You clicked on a button').then(() => askWeather(convo));
+						  }
+						},
+						{
+						  event: 'postback:END_CONVERSATION',
+						  callback: (payload, convo) => {
+							convo.say('Our conversation is finished, bye').then(() => convo.end());
+						  }
+						}
+					  ]);
+				}
+			} else {
+				chat.say("Sorry, I have received wrong data.");
+			}
 		});
-		
-		console.log("  / => askName");
-	};
+	});
+};
 
-	const askFavoriteFood = (convo) => {
-		console.log("  > => askFood");
-		convo.ask(`What's your favorite food?`, (payload, convo) => {
-			const text = payload.message.text;
-			convo.set('food', text);
-			convo.say(`Got it, your favorite food is ${text}`).then(() => sendSummary(convo));
-		});
-		console.log("  / => askFood");
-	};
 
-	const sendSummary = (convo) => {
-		
-		console.log("  > => summa");
-		convo.say(`Ok, here's what you told me about you:
-	      - Name: ${convo.get('name')}
-	      - Favorite Food: ${convo.get('food')}`);
-		
-		console.log("  / => summa");
+
+
+
+const askAge = (convo) => {
+  convo.ask(`Final question. How old are you?`, (payload, convo, data) => {
+    const text = payload.message.text;
+    convo.set('age', text);
+    convo.say(`That's great!`).then(() => {
+      convo.say(`Ok, here's what you told me about you:
+      - Name: ${convo.get('name')}
+      - Favorite Food: ${convo.get('food')}
+      - Gender: ${convo.get('gender')}
+      - Age: ${convo.get('age')}
+      `);
       convo.end();
-	};
+    });
+  });
+};
 
+bot.hear(['hello', 'hi', /hey( there)?/i], (payload, chat) => {
 	chat.conversation((convo) => {
-		console.log("start conv");
-		askName(convo);
+		console.log("start ask weather");
+		convo.set("today", Date.now());
+		convo.set("_chat", chat);
+		convo.set("_payload", payload);
+		askWeather(convo);
 		console.log("end conv");
 	});
 });
 
-bot.hear(/(.*)/i, (payload, chat, data) => {
-	console.log("I heard test");
-	chat.conversation((conversation => {
-		conversation.set("_today", Date.now());
-		conversation.set("_chat", chat);
-		conversation.set("_payload", payload);
-		conversation.set("_data", data);
-		
-		addAll(conversation);
-	}))
-})
 
 
-
-async function addAll(conv) {
-  let result = "";
-  let answer = "";
-  let weather;
-  let loop = true;
-  let finish;
-  result = await say(conv, "Hi, I'm a weather chat bot. Everytime you can say 'finish' for finising our conversation.");
-  console.log(result);
-  console.log(result);
-  do{
-	  answer = await ask(conv, "Which the place for the weather are you interested in?");
-	  console.log("answer = "+answer);
-	  weather = await getJson(WeatherApi+"&q="+answer);
-	  conv.set("placeName", answer);
-	  conv.set("weather", weather);
-	  if(answer === 'finish'){
-		  endConv(conv);
-		  end;
-		  break;
-	  }
-	  if(weather.cod == 200){
-		  sayWeather(conv);
-		  await askForForecast(conv);
-		  loop = false;
-	  } else if(weather.cod = 404){
-		  say(conv, "Sorry, I don't know place \""+answer+"\".");
-	  } else {
-		  say(conv, "error = "+weather.cod);
-	  }
-  } while(loop);
-  
-  finish = await ask(conv, "Would you like finish our conversation?");
-  if(finish === "yes"){
-	  endConv(conv);
-  }
-  else{
-	eraseConv();
-	await addAll(conv);
-  }
-  
-}
-
-async function askForForecast(conv){
-	let chat = conv.get("_chat");
-	let payload = conv.get("_payload");
-	let answer;
-	let said = true;
-	answer = await ask(conv, "Would you know how weather will be?");
-	if(answer === "yes"){
-		let json = await getJson(ForecastApi + "&q=" + conv.get("placeName"));
-		if(json.cod == 200){
-			conv.set("forecast", convertForecast(json));
-			conv.set("days", 1);
-			sayForecast(conv);
-			do{
-				answer = await ask(conv, "Would you like know weather for next day?");
-				if(answer === "yes"){
-					conv.set("days", conv.get("days") + 1);
-					said = sayForecast(conv);
-				}
-				else{
-					said = false;
-				}
-			}while(said);
-		}
-	}
-}
-
-
-async function say(conv, message){
-	let chat = conv.get("_chat");
-	let payload = conv.get("_payload");
-	return new Promise((resolve, reject) => {
-		console.log(" + --> say");
-		chat.say(message);
-		resolve(message);
-	});
-}
-
-const eraseConv = (conv) => {
-	let regex = /\_(.*)/g;
-	for (const [key, value] of Object.entries(conv.context)) {
-		if(!key.match(regex)){
-			delete conv.context[key];
-		}
-	}
-}
-
-
-
-
-async function getJson(uri){
-	return new Promise((resolve, reject) => {
-    fetch(uri).then(res => res.json()).then(json => {
-		resolve(json);
-	}).catch( error => {
-		let ret = {};
-		ret["cod"] = 900;
-		ret["error"] = error;
-		resolve(data);
-	});
-  });
-}
-
-async function ask(conv, question){
-	let chat = conv.get("_chat");
-	let payload = conv.get("_payload");
-	return new Promise((resolve, reject) => {
-		conv.ask(question, (payload, convo) => {
-			resolve(payload.message.text);
-		});
-	});
-	
-}
-
-
-const endConv = (conv) => {
-	let chat = conv.get("_chat");
-	let payload = conv.get("_payload");
-	chat.say("By have you nice time in "+conv.get("placeName"));
-	conv.end();
-}
-
-
-const sayForecast = (convo) => {
-	let chat = convo.get("_chat");
-	let payload = convo.get("_payload");
-	say(convo, "Say forecast for day " + convo.get("days"));
-	if(typeof convo.get("forecast") === "undefined" || convo.get("forecast") == null){
-		//error
-		console.log("     -- error forecast is not known");
-	} else {
-		let days = convo.get("days").toString();
-		if(typeof days === "undefined" || days == null){
-			days = "1";
-		}
-		days = days.toString();
-		let fcst = convo.get("forecast")["forecast"];
-		if(fcst.hasOwnProperty(days)){
-			console.log(JSON.stringify(fcst[days]));
-		}
-		if(typeof fcst[days] === "undefined" || fcst[days] == null) {
-			chat.say("Sorry, I don't have forecast for that day");
-			return false;
-		} else {
-			
-			chat.say("The wether on "+fcst[days]["date"] + " will be max temperature = " 
-				+  fcst[days]["max"] + " and mini temperature = " + fcst[days]["min"] );
-			
-		}
-		
-	}
-	return true;
-}
-
-
-const sayWeather = (conv) =>{
-	let chat = conv.get("_chat");
-	let payload = conv.get("_payload");
+const getWeather = (conv) =>{
 	let json = conv.get("weather");
 	if (json.hasOwnProperty('main')) {
 		if (json['main'].hasOwnProperty('temp')) {
-			chat.say("The tempeatrure is " + json['main']['temp']);
+			return("The tempeatrure is " + json['main']['temp']);
 		}
 	} else {
-		
+		return "error";
 	}
 }
 
-const convertDate = (value) =>{
-	let d = new Date(value);
-	console.log("date begin = "+d+" param = "+value);
-	d.setHours(0);
-	d.setMinutes(0);
-	d.setSeconds(0);
-	d.setMilliseconds(0);
-	console.log("data on end = "+d);
-	return d;
+
+
+
+const getJson = async (uri) =>{
+  const response = await fetch(uri);
+  const json = await response.json();
+  return json;
 }
 
-const dateToIso = (value) => {
-	let reg = /(\d\d\d\d-\d\d-\d\d)(.*)/;
-	let arr = reg.exec(value.toISOString());
-	return arr[1];
-}
 
-const countDaysBetweenDates = (startDate, endDate) => {
-  const start = new Date(dateToIso(startDate)); //clone
-  const end = new Date(dateToIso(endDate)); //clone
-  let dayCount = 0
-
-  while (end > start) {
-    dayCount++
-    start.setDate(start.getDate() + 1)
+async function fetchMoviesJSON() {
+	const response = await fetch('/movies');
+	const movies = await response.json();
+	return movies;
   }
-  return dayCount
-}
-
 
 
 const convertForecast = (json) =>{
@@ -368,6 +420,36 @@ const convertForecast = (json) =>{
 	}
 	return obj;
 }
+
+const convertDate = (value) =>{
+	let d = new Date(value);
+	console.log("date begin = "+d+" param = "+value);
+	d.setHours(0);
+	d.setMinutes(0);
+	d.setSeconds(0);
+	d.setMilliseconds(0);
+	console.log("data on end = "+d);
+	return d;
+}
+
+const dateToIso = (value) => {
+	let reg = /(\d\d\d\d-\d\d-\d\d)(.*)/;
+	let arr = reg.exec(value.toISOString());
+	return arr[1];
+}
+
+const countDaysBetweenDates = (startDate, endDate) => {
+  const start = new Date(dateToIso(startDate)); //clone
+  const end = new Date(dateToIso(endDate)); //clone
+  let dayCount = 0
+
+  while (end > start) {
+    dayCount++
+    start.setDate(start.getDate() + 1)
+  }
+  return dayCount
+}
+
 
 
 bot.start(port);
