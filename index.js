@@ -72,7 +72,7 @@ const askWeather = async (convo) => {
 					{
 					  event: 'postback:END_CONVERSATION',
 					  callback: (payload, convo) => {
-						convo.say('Our conversation is finished, bye').then(() => convo.end());
+						convo.say("Our conversation is finished. Have a nice time in \""+convo.get("place")+"\"").then(() => convo.end());
 					  }
 					}
 					]
@@ -103,7 +103,7 @@ const askWeather = async (convo) => {
 					{
 					  event: 'postback:END_CONVERSATION',
 					  callback: (payload, convo) => {
-						convo.say('Our conversation is finished, bye').then(() => convo.end());
+						convo.say("Our conversation is finished. Have a nice time in \""+convo.get("place")+"\"").then(() => convo.end());
 					  }
 					}
 				  ]);
@@ -203,7 +203,7 @@ const showForecast = async (convo) =>{
 						{
 						  event: 'postback:END_CONVERSATION',
 						  callback: (payload, convo) => {
-							convo.say('Our conversation is finished, bye').then(() => convo.end());
+							convo.say("Our conversation is finished. Have a nice time in \""+convo.get("place")+"\"").then(() => convo.end());
 						  }
 						}
 						]
@@ -270,7 +270,7 @@ const askCompare = async (convo) => {
 						{
 						  event: 'postback:END_CONVERSATION',
 						  callback: (payload, convo) => {
-							convo.say('Our conversation is finished, bye').then(() => convo.end());
+							convo.say("Our conversation is finished. Have a nice time in \""+convo.get("place")+"\"").then(() => convo.end());
 						  }
 						}
 						]
@@ -286,7 +286,7 @@ const askCompare = async (convo) => {
 							{ type: 'postback', title: 'Enter place again', payload: 'ENTER_AGAIN' },
 							{ type: 'postback', title: 'End the conversation', payload: 'END_CONVERSATION' },
 						];
-						convo.sendButtonTemplate("Sorry, I don't know \""+convo.get("place")+"\"\nWhat do you want to do?", buttons);
+						convo.sendButtonTemplate("Sorry, I don't know \""+convo.get("compare")+"\"\nWhat do you want to do?", buttons);
 					}, (payload, convo, data) => {
 						const text = payload.message.text;
 						convo.set('gender', text);
@@ -295,13 +295,13 @@ const askCompare = async (convo) => {
 						{
 						  event: 'postback:ENTER_AGAIN',
 						  callback: (payload, convo) => {
-							convo.say('You clicked on a button').then(() => askWeather(convo));
+							convo.say('You clicked on a button').then(() => askCompare(convo));
 						  }
 						},
 						{
 						  event: 'postback:END_CONVERSATION',
 						  callback: (payload, convo) => {
-							convo.say('Our conversation is finished, bye').then(() => convo.end());
+							convo.say("Our conversation is finished. Have a nice time in \""+convo.get("place")+"\"").then(() => convo.end());
 						  }
 						}
 					  ]);
